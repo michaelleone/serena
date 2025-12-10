@@ -253,6 +253,9 @@ class SerenaMCPFactory:
         modes: Sequence[str] = DEFAULT_MODES,
         enable_web_dashboard: bool | None = None,
         enable_gui_log_window: bool | None = None,
+        web_dashboard_global: bool | None = None,
+        web_dashboard_global_open_on_launch: bool | None = None,
+        web_dashboard_global_port: int | None = None,
         log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | None = None,
         trace_lsp_communication: bool | None = None,
         tool_timeout: float | None = None,
@@ -266,6 +269,9 @@ class SerenaMCPFactory:
         :param enable_web_dashboard: Whether to enable the web dashboard. If not specified, will take the value from the serena configuration.
         :param enable_gui_log_window: Whether to enable the GUI log window. It currently does not work on macOS, and setting this to True will be ignored then.
             If not specified, will take the value from the serena configuration.
+        :param web_dashboard_global: Whether to enable the global dashboard aggregating all instances.
+        :param web_dashboard_global_open_on_launch: Whether to open the global dashboard in browser on launch.
+        :param web_dashboard_global_port: Port for the global dashboard.
         :param log_level: Log level. If not specified, will take the value from the serena configuration.
         :param trace_lsp_communication: Whether to trace the communication between Serena and the language servers.
             This is useful for debugging language server issues.
@@ -279,6 +285,12 @@ class SerenaMCPFactory:
                 config.web_dashboard = enable_web_dashboard
             if enable_gui_log_window is not None:
                 config.gui_log_window_enabled = enable_gui_log_window
+            if web_dashboard_global is not None:
+                config.web_dashboard_global = web_dashboard_global
+            if web_dashboard_global_open_on_launch is not None:
+                config.web_dashboard_global_open_on_launch = web_dashboard_global_open_on_launch
+            if web_dashboard_global_port is not None:
+                config.web_dashboard_global_port = web_dashboard_global_port
             if log_level is not None:
                 log_level = cast(Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], log_level.upper())
                 config.log_level = logging.getLevelNamesMapping()[log_level]
