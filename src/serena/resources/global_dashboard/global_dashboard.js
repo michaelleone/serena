@@ -1,7 +1,9 @@
 /**
  * Global Dashboard for Serena
  *
- * Provides unified management of all running Serena instances.
+ * A thin orchestration layer that embeds actual per-instance dashboards
+ * via iframes. This ensures automatic compatibility with upstream improvements
+ * to the per-instance dashboard.
  */
 
 class GlobalDashboard {
@@ -10,10 +12,6 @@ class GlobalDashboard {
         this.selectedPid = null;
         this.instances = [];
         this.instancePollInterval = null;
-        this.contentPollInterval = null;
-
-        // Cache per-instance data
-        this.instanceCache = {};
 
         // Initialize
         this.initializeTheme();
@@ -84,8 +82,17 @@ class GlobalDashboard {
                 if (self.selectedPid === null && self.instances.length > 0) {
                     self.selectInstance(self.instances[0].pid);
                 } else if (self.selectedPid !== null) {
-                    // Refresh content for selected instance
-                    self.loadInstanceContent(self.selectedPid);
+                    // Check if selected instance still exists
+                    const stillExists = self.instances.some(i => i.pid === self.selectedPid);
+                    if (!stillExists && self.instances.length > 0) {
+                        self.selectInstance(self.instances[0].pid);
+                    } else if (!stillExists) {
+                        self.selectedPid = null;
+                        self.showNoInstancesContent();
+                    } else {
+                        // Update the iframe if instance state changed (e.g., became zombie)
+                        self.updateInstanceContent();
+                    }
                 }
             },
             error: function(xhr, status, error) {
@@ -106,7 +113,7 @@ class GlobalDashboard {
 
         if (this.instances.length === 0) {
             $tabBar.html('<div class="no-instances-message">No Serena instances running</div>');
-            $('#instance-content').html('<div class="no-instances-message">Start a Serena instance to see it here</div>');
+            this.showNoInstancesContent();
             return;
         }
 
@@ -151,87 +158,102 @@ class GlobalDashboard {
         $('.instance-tab').removeClass('active');
         $(`.instance-tab[data-pid="${pid}"]`).addClass('active');
 
-        // Load content
-        this.loadInstanceContent(pid);
+        // Update content
+        this.updateInstanceContent();
     }
 
-    // ===== Instance Content =====
+    // ===== Instance Content (iframe or zombie message) =====
 
-    loadInstanceContent(pid) {
-        const self = this;
-        const inst = this.instances.find(i => i.pid === pid);
+    updateInstanceContent() {
+        const inst = this.instances.find(i => i.pid === this.selectedPid);
 
         if (!inst) {
-            $('#instance-content').html('<div class="error-message">Instance not found</div>');
+            this.showNoInstancesContent();
             return;
         }
 
-        // If zombie, show zombie banner
+        // If zombie, show zombie message instead of iframe
         if (inst.state === 'zombie') {
-            this.renderZombieContent(inst);
-            return;
+            this.showZombieContent(inst);
+        } else {
+            this.showIframeContent(inst);
         }
-
-        // Load config overview from the instance
-        $.ajax({
-            url: `/global-dashboard/api/instance/${pid}/config-overview`,
-            type: 'GET',
-            success: function(response) {
-                if (response.error) {
-                    self.renderErrorContent(inst, response.error);
-                } else {
-                    self.renderInstanceContent(inst, response);
-                }
-            },
-            error: function(xhr, status, error) {
-                self.renderErrorContent(inst, error);
-            }
-        });
     }
 
-    renderZombieContent(inst) {
+    showNoInstancesContent() {
+        $('#instance-content').html(`
+            <div class="no-instances-message">
+                <p>No instances selected</p>
+                <p class="hint">Start a Serena instance to see it here</p>
+            </div>
+        `);
+    }
+
+    showIframeContent(inst) {
+        const dashboardUrl = `http://127.0.0.1:${inst.port}/dashboard/`;
+
+        // Check if iframe already exists with correct URL
+        const $existing = $('#instance-iframe');
+        if ($existing.length && $existing.attr('src') === dashboardUrl) {
+            return; // Already showing correct dashboard
+        }
+
+        const html = `
+            <div class="iframe-container">
+                <iframe id="instance-iframe"
+                        src="${dashboardUrl}"
+                        frameborder="0"
+                        allow="clipboard-read; clipboard-write">
+                </iframe>
+            </div>
+        `;
+
+        $('#instance-content').html(html);
+    }
+
+    showZombieContent(inst) {
         const self = this;
         const zombieTime = inst.zombie_detected_at ?
             new Date(inst.zombie_detected_at * 1000).toLocaleString() : 'Unknown';
 
-        let html = `
-            <div class="instance-header">
-                <div>
-                    <div class="instance-title">${inst.pid} - ${this.escapeHtml(inst.project_name || 'NO PROJECT')}</div>
-                    <div class="instance-meta">Port: ${inst.port} | Context: ${inst.context || 'N/A'}</div>
-                </div>
-                <div class="instance-actions">
-                    <button class="btn btn-danger" id="force-kill-btn">Force Kill</button>
-                </div>
-            </div>
-
-            <div class="zombie-banner">
-                <div class="zombie-banner-icon">&#9760;</div>
-                <div class="zombie-banner-text">
-                    <div class="zombie-banner-title">Instance Unreachable (Zombie)</div>
-                    <div class="zombie-banner-message">
-                        This instance is no longer responding to health checks.
-                        Detected at: ${zombieTime}.
-                        It will be automatically removed in 5 minutes, or you can force kill it now.
+        const html = `
+            <div class="zombie-container">
+                <div class="zombie-banner">
+                    <div class="zombie-banner-icon">&#9760;</div>
+                    <div class="zombie-banner-text">
+                        <div class="zombie-banner-title">Instance Unreachable (Zombie)</div>
+                        <div class="zombie-banner-message">
+                            This instance is no longer responding to health checks.<br>
+                            Detected at: ${zombieTime}<br><br>
+                            It will be automatically removed in 5 minutes, or you can force kill it now.
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="config-section">
-                <h3>Last Known State</h3>
-                <div class="config-grid">
-                    <div class="config-label">Project:</div>
-                    <div class="config-value">${this.escapeHtml(inst.project_name || 'None')}</div>
-                    <div class="config-label">Project Root:</div>
-                    <div class="config-value">${this.escapeHtml(inst.project_root || 'N/A')}</div>
-                    <div class="config-label">Context:</div>
-                    <div class="config-value">${this.escapeHtml(inst.context || 'N/A')}</div>
-                    <div class="config-label">Modes:</div>
-                    <div class="config-value">${inst.modes.join(', ') || 'N/A'}</div>
-                    <div class="config-label">Started:</div>
-                    <div class="config-value">${new Date(inst.started_at * 1000).toLocaleString()}</div>
-                    <div class="config-label">Last Heartbeat:</div>
-                    <div class="config-value">${new Date(inst.last_heartbeat * 1000).toLocaleString()}</div>
+                <div class="zombie-info">
+                    <h3>Last Known State</h3>
+                    <div class="info-grid">
+                        <div class="info-label">PID:</div>
+                        <div class="info-value">${inst.pid}</div>
+                        <div class="info-label">Port:</div>
+                        <div class="info-value">${inst.port}</div>
+                        <div class="info-label">Project:</div>
+                        <div class="info-value">${this.escapeHtml(inst.project_name || 'None')}</div>
+                        <div class="info-label">Project Root:</div>
+                        <div class="info-value">${this.escapeHtml(inst.project_root || 'N/A')}</div>
+                        <div class="info-label">Context:</div>
+                        <div class="info-value">${this.escapeHtml(inst.context || 'N/A')}</div>
+                        <div class="info-label">Modes:</div>
+                        <div class="info-value">${inst.modes.join(', ') || 'N/A'}</div>
+                        <div class="info-label">Started:</div>
+                        <div class="info-value">${new Date(inst.started_at * 1000).toLocaleString()}</div>
+                        <div class="info-label">Last Heartbeat:</div>
+                        <div class="info-value">${new Date(inst.last_heartbeat * 1000).toLocaleString()}</div>
+                    </div>
+                </div>
+
+                <div class="zombie-actions">
+                    <button class="btn btn-danger" id="force-kill-btn">Force Kill Process</button>
                 </div>
             </div>
         `;
@@ -242,141 +264,6 @@ class GlobalDashboard {
         $('#force-kill-btn').click(function() {
             if (confirm(`Force kill process ${inst.pid}? This will send SIGTERM/SIGKILL to the process.`)) {
                 self.forceKillInstance(inst.pid);
-            }
-        });
-    }
-
-    renderErrorContent(inst, error) {
-        const html = `
-            <div class="instance-header">
-                <div>
-                    <div class="instance-title">${inst.pid} - ${this.escapeHtml(inst.project_name || 'NO PROJECT')}</div>
-                    <div class="instance-meta">Port: ${inst.port}</div>
-                </div>
-            </div>
-            <div class="error-message">
-                Error communicating with instance: ${this.escapeHtml(error)}
-            </div>
-        `;
-        $('#instance-content').html(html);
-    }
-
-    renderInstanceContent(inst, config) {
-        const self = this;
-
-        let html = `
-            <div class="instance-header">
-                <div>
-                    <div class="instance-title">${inst.pid} - ${this.escapeHtml(config.active_project?.name || 'NO PROJECT')}</div>
-                    <div class="instance-meta">
-                        Port: ${inst.port} |
-                        Context: ${config.context?.name || 'N/A'} |
-                        Started: ${new Date(inst.started_at * 1000).toLocaleString()}
-                    </div>
-                </div>
-                <div class="instance-actions">
-                    <a href="http://127.0.0.1:${inst.port}/dashboard/" target="_blank" class="btn">Open Full Dashboard</a>
-                    <button class="btn btn-warning" id="shutdown-btn">Shutdown</button>
-                </div>
-            </div>
-        `;
-
-        // Configuration section
-        html += '<section class="config-section"><h2>Current Configuration</h2>';
-        html += '<div class="config-grid">';
-        html += `<div class="config-label">Active Project:</div>`;
-        html += `<div class="config-value">${this.escapeHtml(config.active_project?.name || 'None')}</div>`;
-
-        if (config.active_project?.path) {
-            html += `<div class="config-label">Project Path:</div>`;
-            html += `<div class="config-value">${this.escapeHtml(config.active_project.path)}</div>`;
-        }
-
-        html += `<div class="config-label">Languages:</div>`;
-        html += `<div class="config-value">${(config.languages || []).join(', ') || 'N/A'}</div>`;
-
-        html += `<div class="config-label">Active Modes:</div>`;
-        html += `<div class="config-value">${(config.modes || []).map(m => m.name).join(', ') || 'None'}</div>`;
-
-        html += `<div class="config-label">File Encoding:</div>`;
-        html += `<div class="config-value">${config.encoding || 'N/A'}</div>`;
-        html += '</div></section>';
-
-        // Tool Usage section
-        html += '<section class="basic-stats-section"><h2>Tool Usage</h2>';
-        html += '<div id="tool-stats-display">';
-
-        const stats = config.tool_stats_summary || {};
-        if (Object.keys(stats).length === 0) {
-            html += '<div class="no-stats-message">No tool usage stats collected yet.</div>';
-        } else {
-            const sortedTools = Object.keys(stats).sort((a, b) => stats[b].num_calls - stats[a].num_calls);
-            const maxCalls = Math.max(...sortedTools.map(t => stats[t].num_calls));
-
-            sortedTools.forEach(function(toolName) {
-                const count = stats[toolName].num_calls;
-                const pct = maxCalls > 0 ? (count / maxCalls * 100) : 0;
-
-                html += `<div class="stat-bar-container">`;
-                html += `<div class="stat-tool-name" title="${toolName}">${toolName}</div>`;
-                html += `<div class="bar-wrapper"><div class="bar" style="width: ${pct}%"></div></div>`;
-                html += `<div class="stat-count">${count}</div>`;
-                html += `</div>`;
-            });
-        }
-        html += '</div></section>';
-
-        // Active Tools section (collapsible)
-        html += '<section class="projects-section">';
-        html += `<h2 class="collapsible-header" id="tools-header-${inst.pid}">`;
-        html += `<span>Active Tools (${(config.active_tools || []).length})</span>`;
-        html += '<span class="toggle-icon">&#9660;</span></h2>';
-        html += `<div class="collapsible-content tools-grid" id="tools-content-${inst.pid}" style="display:none;">`;
-        (config.active_tools || []).forEach(function(tool) {
-            html += `<div class="tool-item">${tool}</div>`;
-        });
-        html += '</div></section>';
-
-        $('#instance-content').html(html);
-
-        // Event handlers
-        $('#shutdown-btn').click(function() {
-            if (confirm(`Shutdown Serena instance ${inst.pid}?`)) {
-                self.shutdownInstance(inst.pid);
-            }
-        });
-
-        // Collapsible sections
-        $(`#tools-header-${inst.pid}`).click(function() {
-            $(`#tools-content-${inst.pid}`).slideToggle(300);
-            $(this).find('.toggle-icon').toggleClass('expanded');
-        });
-    }
-
-    // ===== Instance Actions =====
-
-    shutdownInstance(pid) {
-        const self = this;
-
-        $.ajax({
-            url: `/global-dashboard/api/instance/${pid}/shutdown`,
-            type: 'PUT',
-            success: function(response) {
-                console.log('Shutdown response:', response);
-                // Remove from local list and refresh
-                self.instances = self.instances.filter(i => i.pid !== pid);
-                if (self.selectedPid === pid) {
-                    self.selectedPid = self.instances.length > 0 ? self.instances[0].pid : null;
-                }
-                self.renderInstanceTabs();
-                if (self.selectedPid) {
-                    self.loadInstanceContent(self.selectedPid);
-                } else {
-                    $('#instance-content').html('<div class="no-instances-message">No instances selected</div>');
-                }
-            },
-            error: function(xhr, status, error) {
-                alert('Error shutting down instance: ' + error);
             }
         });
     }
@@ -407,7 +294,7 @@ class GlobalDashboard {
         const self = this;
 
         $.ajax({
-            url: '/global-dashboard/api/lifecycle-events?limit=200',
+            url: '/global-dashboard/api/lifecycle-events',
             type: 'GET',
             success: function(response) {
                 self.renderLifecycleEvents(response.events || []);

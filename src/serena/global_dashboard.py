@@ -1,7 +1,8 @@
 """Global dashboard for managing all running Serena instances.
 
-Provides a unified view of all instances with tabbed interface,
-lifecycle event logging, and zombie management.
+Provides a unified view of all instances with tabbed interface that embeds
+the actual per-instance dashboards via iframes. This ensures automatic
+compatibility with upstream dashboard improvements.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ import time
 from typing import Any
 
 import requests
-from flask import Flask, Response, request, send_from_directory
+from flask import Flask, Response, send_from_directory
 from pydantic import BaseModel
 
 from serena.constants import SERENA_GLOBAL_DASHBOARD_DIR, SERENA_GLOBAL_DASHBOARD_PORT_DEFAULT
@@ -29,7 +30,7 @@ log = logging.getLogger(__name__)
 
 
 class InstanceSummary(BaseModel):
-    """Summary of an instance for the frontend."""
+    """Summary of an instance for the frontend tab bar."""
 
     pid: int
     port: int
@@ -57,12 +58,14 @@ class LifecycleEventSummary(BaseModel):
 class SerenaGlobalDashboardAPI:
     """Flask-based global dashboard for all Serena instances.
 
-    Provides:
-    - Tabbed interface showing all instances
-    - Proxy routes to individual instance APIs
-    - Lifecycle event log
-    - Zombie detection and management
-    - Force kill capability
+    Architecture: This is a thin orchestration layer that:
+    - Shows a tab bar with colored instance status indicators
+    - Embeds the actual per-instance dashboards via iframes
+    - Provides lifecycle event logging (unique to global dashboard)
+    - Handles zombie detection and force-kill
+
+    The iframe approach ensures that any improvements to the upstream
+    per-instance dashboard automatically benefit the global dashboard.
     """
 
     HEARTBEAT_CHECK_INTERVAL = 5  # seconds
@@ -87,7 +90,7 @@ class SerenaGlobalDashboardAPI:
         """Set up Flask routes for the global dashboard."""
         app = self._app
 
-        # Static files
+        # Static files for global dashboard UI
         @app.route("/global-dashboard/<path:filename>")
         def serve_dashboard(filename: str) -> Response:
             return send_from_directory(SERENA_GLOBAL_DASHBOARD_DIR, filename)
@@ -96,7 +99,7 @@ class SerenaGlobalDashboardAPI:
         def serve_dashboard_index() -> Response:
             return send_from_directory(SERENA_GLOBAL_DASHBOARD_DIR, "index.html")
 
-        # Instance list with health check
+        # API: Instance list for tab bar
         @app.route("/global-dashboard/api/instances", methods=["GET"])
         def list_instances() -> dict[str, Any]:
             summaries = self._build_instance_summaries()
@@ -104,11 +107,10 @@ class SerenaGlobalDashboardAPI:
             summaries.sort(key=lambda x: x.started_at)
             return {"instances": [s.model_dump() for s in summaries]}
 
-        # Lifecycle events
+        # API: Lifecycle events (unique to global dashboard)
         @app.route("/global-dashboard/api/lifecycle-events", methods=["GET"])
         def get_lifecycle_events() -> dict[str, Any]:
-            limit = request.args.get("limit", 100, type=int)
-            events = self._registry.get_lifecycle_events(limit)
+            events = self._registry.get_lifecycle_events(limit=200)
             return {
                 "events": [
                     LifecycleEventSummary(
@@ -123,43 +125,7 @@ class SerenaGlobalDashboardAPI:
                 ]
             }
 
-        # Proxy routes to individual instances
-        @app.route("/global-dashboard/api/instance/<int:pid>/logs", methods=["POST"])
-        def proxy_logs(pid: int) -> dict[str, Any]:
-            return self._proxy_to_instance(pid, "post", "/get_log_messages", json=request.get_json())
-
-        @app.route("/global-dashboard/api/instance/<int:pid>/tool-names", methods=["GET"])
-        def proxy_tool_names(pid: int) -> dict[str, Any]:
-            return self._proxy_to_instance(pid, "get", "/get_tool_names")
-
-        @app.route("/global-dashboard/api/instance/<int:pid>/tool-stats", methods=["GET"])
-        def proxy_tool_stats(pid: int) -> dict[str, Any]:
-            return self._proxy_to_instance(pid, "get", "/get_tool_stats")
-
-        @app.route("/global-dashboard/api/instance/<int:pid>/clear-tool-stats", methods=["POST"])
-        def proxy_clear_tool_stats(pid: int) -> dict[str, Any]:
-            return self._proxy_to_instance(pid, "post", "/clear_tool_stats")
-
-        @app.route("/global-dashboard/api/instance/<int:pid>/config-overview", methods=["GET"])
-        def proxy_config_overview(pid: int) -> dict[str, Any]:
-            return self._proxy_to_instance(pid, "get", "/get_config_overview")
-
-        @app.route("/global-dashboard/api/instance/<int:pid>/queued-executions", methods=["GET"])
-        def proxy_queued_executions(pid: int) -> dict[str, Any]:
-            return self._proxy_to_instance(pid, "get", "/queued_task_executions")
-
-        @app.route("/global-dashboard/api/instance/<int:pid>/last-execution", methods=["GET"])
-        def proxy_last_execution(pid: int) -> dict[str, Any]:
-            return self._proxy_to_instance(pid, "get", "/last_execution")
-
-        @app.route("/global-dashboard/api/instance/<int:pid>/shutdown", methods=["PUT"])
-        def proxy_shutdown(pid: int) -> dict[str, Any]:
-            result = self._proxy_to_instance(pid, "put", "/shutdown")
-            # The instance should unregister itself, but we'll also clean up
-            self._registry.unregister(pid)
-            return result
-
-        # Force kill for zombies
+        # API: Force kill for zombies (can't be done via iframe)
         @app.route("/global-dashboard/api/instance/<int:pid>/force-kill", methods=["POST"])
         def force_kill(pid: int) -> dict[str, Any]:
             inst = self._registry.get_instance(pid)
@@ -188,12 +154,11 @@ class SerenaGlobalDashboardAPI:
                 return {"ok": False, "error": str(e)}
 
     def _build_instance_summaries(self) -> list[InstanceSummary]:
-        """Build summaries for all instances, checking health."""
+        """Build summaries for all instances."""
         instances = self._registry.list_instances()
         summaries: list[InstanceSummary] = []
 
         for inst in instances:
-            # Build summary from stored state
             summaries.append(
                 InstanceSummary(
                     pid=inst.pid,
@@ -210,27 +175,6 @@ class SerenaGlobalDashboardAPI:
             )
 
         return summaries
-
-    def _proxy_to_instance(self, pid: int, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
-        """Proxy a request to a specific instance's dashboard."""
-        inst = self._registry.get_instance(pid)
-        if inst is None:
-            return {"error": f"Unknown instance {pid}"}
-
-        if inst.state == InstanceState.ZOMBIE.value:
-            return {"error": f"Instance {pid} is a zombie (unreachable)"}
-
-        url = f"http://127.0.0.1:{inst.port}{path}"
-        try:
-            response = requests.request(method, url, timeout=5.0, **kwargs)
-            response.raise_for_status()
-            # Update heartbeat on successful communication
-            self._registry.update_heartbeat(pid)
-            return response.json()
-        except requests.RequestException as e:
-            # Mark as zombie if unreachable
-            self._registry.mark_zombie(pid)
-            return {"error": f"Failed to reach instance {pid}: {e}"}
 
     def _heartbeat_checker(self) -> None:
         """Background thread that checks instance health."""
