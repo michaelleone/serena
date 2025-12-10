@@ -106,19 +106,6 @@ def get_serena_managed_in_project_dir(project_root: str | Path) -> str:
     return os.path.join(project_root, SERENA_MANAGED_DIR_NAME)
 
 
-def is_running_in_docker() -> bool:
-    """Check if we're running inside a Docker container."""
-    # Check for Docker-specific files
-    if os.path.exists("/.dockerenv"):
-        return True
-    # Check cgroup for docker references
-    try:
-        with open("/proc/self/cgroup") as f:
-            return "docker" in f.read()
-    except FileNotFoundError:
-        return False
-
-
 @dataclass(kw_only=True)
 class ProjectConfig(ToolInclusionDefinition, ToStringMixin):
     project_name: str
@@ -368,7 +355,6 @@ class SerenaConfig(ToolInclusionDefinition, ToStringMixin):
     web_dashboard: bool = True
     web_dashboard_open_on_launch: bool = True
     web_dashboard_listen_address: str = "127.0.0.1"
-    """When running in Docker, this will be automatically set to '0.0.0.0' ignoring any configuration by the user."""
     tool_timeout: float = DEFAULT_TOOL_TIMEOUT
     loaded_commented_yaml: CommentedMap | None = None
     config_file_path: str | None = None
@@ -398,11 +384,6 @@ class SerenaConfig(ToolInclusionDefinition, ToStringMixin):
     """Advanced configuration option allowing to configure language server implementation specific options, see SolidLSPSettings for more info."""
 
     CONFIG_FILE = "serena_config.yml"
-    CONFIG_FILE_DOCKER = "serena_config.docker.yml"  # Docker-specific config file; auto-generated if missing, mounted via docker-compose for user customization
-
-    def __post_init__(self) -> None:
-        if is_running_in_docker():
-            self.web_dashboard_listen_address = "0.0.0.0"
 
     def _tostring_includes(self) -> list[str]:
         return ["config_file_path"]
@@ -423,20 +404,17 @@ class SerenaConfig(ToolInclusionDefinition, ToStringMixin):
         """
         :return: the location where the Serena configuration file is stored/should be stored
         """
-        if is_running_in_docker():
-            return os.path.join(REPO_ROOT, cls.CONFIG_FILE_DOCKER)
-        else:
-            config_path = os.path.join(SerenaPaths().serena_user_home_dir, cls.CONFIG_FILE)
+        config_path = os.path.join(SerenaPaths().serena_user_home_dir, cls.CONFIG_FILE)
 
-            # if the config file does not exist, check if we can migrate it from the old location
-            if not os.path.exists(config_path):
-                old_config_path = os.path.join(REPO_ROOT, cls.CONFIG_FILE)
-                if os.path.exists(old_config_path):
-                    log.info(f"Moving Serena configuration file from {old_config_path} to {config_path}")
-                    os.makedirs(os.path.dirname(config_path), exist_ok=True)
-                    shutil.move(old_config_path, config_path)
+        # if the config file does not exist, check if we can migrate it from the old location
+        if not os.path.exists(config_path):
+            old_config_path = os.path.join(REPO_ROOT, cls.CONFIG_FILE)
+            if os.path.exists(old_config_path):
+                log.info(f"Moving Serena configuration file from {old_config_path} to {config_path}")
+                os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                shutil.move(old_config_path, config_path)
 
-            return config_path
+        return config_path
 
     @classmethod
     def from_config_file(cls, generate_if_missing: bool = True) -> "SerenaConfig":
@@ -490,12 +468,7 @@ class SerenaConfig(ToolInclusionDefinition, ToStringMixin):
         def get_value_or_default(field_name: str) -> Any:
             return loaded_commented_yaml.get(field_name, get_dataclass_default(SerenaConfig, field_name))
 
-        if is_running_in_docker():
-            instance.gui_log_window_enabled = False  # not supported in Docker
-        else:
-            instance.gui_log_window_enabled = get_value_or_default("gui_log_window_enabled")
-            # in docker the post_init takes care of setting the address to 0.0.0.0, we ignore the user's setting
-            instance.web_dashboard_listen_address = get_value_or_default("web_dashboard_listen_address")
+        instance.gui_log_window_enabled = get_value_or_default("gui_log_window_enabled")
         instance.log_level = loaded_commented_yaml.get("log_level", loaded_commented_yaml.get("gui_log_level", logging.INFO))
         instance.web_dashboard = get_value_or_default("web_dashboard")
         instance.web_dashboard_open_on_launch = get_value_or_default("web_dashboard_open_on_launch")

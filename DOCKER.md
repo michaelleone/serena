@@ -1,6 +1,6 @@
 # Docker Setup for Serena (Experimental)
 
-⚠️ **EXPERIMENTAL FEATURE**: The Docker setup for Serena is currently experimental and has several limitations. Please read this entire document before using Docker with Serena.
+⚠️ **EXPERIMENTAL FEATURE**: The Docker setup for Serena is still experimental and has some limitations. Please read this entire document before using Docker with Serena.
 
 ## Overview
 
@@ -12,27 +12,19 @@ Docker support allows you to run Serena in an isolated container environment, wh
 - **Consistent dependencies**: No need to manage language servers and dependencies on your host system
 - **Cross-platform support**: Works consistently across Windows, macOS, and Linux
 
-## Important Limitations and Caveats
+## Important Usage Pointers
 
-### 1. Configuration File Conflicts
+### Configuration File Conflicts
 
-⚠️ **Critical**: Docker uses a separate configuration file (`serena_config.docker.yml`) to avoid path conflicts. When running in Docker:
-- Container paths will be stored in the configuration (e.g., `/workspaces/serena/...`)
-- These paths are incompatible with non-Docker usage
-- After using Docker, you cannot directly switch back to non-Docker usage without manual configuration adjustment
+Serena's configuration and log files are stored in the container in `/workspaces/serena/config/`.
+Any local configuration you may have for Serena will not apply; the container uses its own separate configuration.
 
-### 2. Project Activation Limitations
+### Project Activation Limitations
 
 - **Only mounted directories work**: Projects must be mounted as volumes to be accessible
 - Projects outside the mounted directories cannot be activated or accessed
-- Default setup only mounts the current directory
 
-### 3. GUI Window Disabled
-
-- The GUI log window option is automatically disabled in Docker environments
-- Use the web dashboard instead (see below)
-
-### 4. Dashboard Port Configuration
+### Dashboard Port Configuration
 
 The web dashboard runs on port 24282 (0x5EDA) by default. You can configure this using environment variables:
 
@@ -46,7 +38,7 @@ SERENA_DASHBOARD_PORT=8080 docker-compose up serena
 
 ⚠️ **Note**: If the local port is occupied, you'll need to specify a different port using the environment variable.
 
-### 5. Line Ending Issues on Windows
+### Line Ending Issues on Windows
 
 ⚠️ **Windows Users**: Be aware of potential line ending inconsistencies:
 - Files edited within the Docker container may use Unix line endings (LF)
@@ -170,11 +162,3 @@ To switch between Docker and non-Docker usage:
 2. **Non-Docker to Docker**:
    - Projects will be re-registered with container paths
    - Original config remains unchanged
-
-## Future Improvements
-
-We're working on:
-- Automatic config migration between environments
-- Better project path handling
-- Dynamic port allocation
-- Windows line-ending handling.
