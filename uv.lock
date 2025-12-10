@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = "==3.11.*"
 
 [[package]]
@@ -1859,6 +1859,7 @@ dependencies = [
     { name = "anthropic" },
     { name = "docstring-parser" },
     { name = "dotenv" },
+    { name = "filelock" },
     { name = "flask" },
     { name = "fortls" },
     { name = "jinja2" },
@@ -1914,6 +1915,7 @@ requires-dist = [
     { name = "black", extras = ["jupyter"], marker = "extra == 'dev'", specifier = ">=23.7.0" },
     { name = "docstring-parser", specifier = ">=0.16" },
     { name = "dotenv", specifier = ">=0.9.9" },
+    { name = "filelock", specifier = ">=3.0.0" },
     { name = "flask", specifier = ">=3.0.0" },
     { name = "fortls", specifier = ">=3.2.2" },
     { name = "google-genai", marker = "extra == 'google'", specifier = ">=1.8.0" },

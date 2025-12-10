@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serena Global Dashboard</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="../dashboard/serena-icon-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../dashboard/serena-icon-32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="../dashboard/serena-icon-48.png">
+    <link rel="stylesheet" href="../dashboard/dashboard.css">
+    <link rel="stylesheet" href="global_dashboard.css">
+    <script src="../dashboard/jquery.min.js"></script>
+    <script src="global_dashboard.js"></script>
+</head>
+<body>
+<div id="frame">
+    <header class="header">
+        <div class="header-left">
+            <div class="logo-container">
+                <img id="serena-logo" src="../dashboard/serena-logo.svg" alt="Serena">
+            </div>
+            <span class="global-badge">GLOBAL</span>
+        </div>
+        <nav class="header-nav">
+            <button id="theme-toggle" class="theme-toggle">
+                <span id="theme-icon" style="height: 21px">&#127769;</span>
+                <span id="theme-text">Dark</span>
+            </button>
+            <button id="menu-toggle" class="menu-button">
+                <span>&#9776;</span>
+                <span>Menu</span>
+            </button>
+            <div id="menu-dropdown" class="menu-dropdown" style="display:none">
+                <a href="#" data-page="instances" class="active">Instances</a>
+                <a href="#" data-page="lifecycle">Lifecycle Log</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="main">
+        <!-- Instances Page -->
+        <div id="page-instances" class="page-view">
+            <div class="tab-bar" id="instance-tabs">
+                <div class="loading">Loading instances...</div>
+            </div>
+            <div id="instance-content">
+                <div class="no-instances-message" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    Select an instance tab above to view details
+                </div>
+            </div>
+        </div>
+
+        <!-- Lifecycle Log Page -->
+        <div id="page-lifecycle" class="page-view" style="display:none">
+            <div class="lifecycle-container">
+                <div class="lifecycle-header">
+                    <h2>Lifecycle Events</h2>
+                    <button id="refresh-lifecycle" class="btn">Refresh</button>
+                </div>
+                <div id="lifecycle-events" class="lifecycle-events">
+                    <div class="loading">Loading events...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        const dashboard = new GlobalDashboard();
+    });
+</script>
+</body>
+</html>

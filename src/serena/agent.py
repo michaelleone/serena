@@ -6,6 +6,7 @@ import multiprocessing
 import os
 import platform
 import sys
+import threading
 import webbrowser
 from collections.abc import Callable
 from logging import Logger
@@ -19,13 +20,16 @@ from serena import serena_version
 from serena.analytics import RegisteredTokenCountEstimator, ToolUsageStats
 from serena.config.context_mode import SerenaAgentContext, SerenaAgentMode
 from serena.config.serena_config import SerenaConfig, ToolInclusionDefinition
+from serena.constants import SERENA_GLOBAL_DASHBOARD_PORT_DEFAULT
 from serena.dashboard import SerenaDashboardAPI
+from serena.global_dashboard import SerenaGlobalDashboardAPI
 from serena.ls_manager import LanguageServerManager
 from serena.project import Project
 from serena.prompt_factory import SerenaPromptFactory
 from serena.task_executor import TaskExecutor
 from serena.tools import ActivateProjectTool, GetCurrentConfigTool, ReplaceContentTool, Tool, ToolMarker, ToolRegistry
 from serena.util.inspection import iter_subclasses
+from serena.util.instance_registry import InstanceRegistry
 from serena.util.logging import MemoryLogHandler
 from solidlsp.ls_config import Language
 
@@ -284,6 +288,42 @@ class SerenaAgent:
             if self._gui_log_viewer is not None:
                 self._gui_log_viewer.set_dashboard_url(dashboard_url)
 
+        # Register this instance in the global registry and optionally start global dashboard
+        self._instance_registry: InstanceRegistry | None = None
+        self._global_dashboard_thread: threading.Thread | None = None
+        self._dashboard_port: int | None = None
+
+        if self.serena_config.web_dashboard:
+            self._instance_registry = InstanceRegistry()
+            self._dashboard_port = port
+            self._instance_registry.register(
+                pid=os.getpid(),
+                port=port,
+                context=self._context.name if self._context else None,
+                modes=[m.name for m in self._modes] if self._modes else [],
+            )
+
+            # Start global dashboard if enabled
+            if self.serena_config.web_dashboard_global:
+                global_port = self.serena_config.web_dashboard_global_port or SERENA_GLOBAL_DASHBOARD_PORT_DEFAULT
+                global_dashboard = SerenaGlobalDashboardAPI(self._instance_registry)
+                thread, actual_port = global_dashboard.run_in_thread_if_available(
+                    preferred_port=global_port,
+                    owning_pid=os.getpid(),
+                )
+
+                if thread is not None:
+                    self._global_dashboard_thread = thread
+                    global_url = f"http://127.0.0.1:{actual_port}/global-dashboard/"
+                    log.info("Serena global dashboard started at %s", global_url)
+
+                    if self.serena_config.web_dashboard_global_open_on_launch:
+                        process = multiprocessing.Process(target=self._open_dashboard, args=(global_url,))
+                        process.start()
+                        process.join(timeout=1)
+                elif actual_port is not None:
+                    log.info("Global dashboard already running on port %s", actual_port)
+
     def get_current_tasks(self) -> list[TaskExecutor.TaskInfo]:
         """
         Gets the list of tasks currently running or queued for execution.
@@ -515,6 +555,17 @@ class SerenaAgent:
         self._active_project = project
         self._update_active_tools()
 
+        # Update instance registry with project info
+        if self._instance_registry is not None:
+            try:
+                self._instance_registry.update_project(
+                    pid=os.getpid(),
+                    project_name=project.project_name,
+                    project_root=project.project_root,
+                )
+            except Exception as e:
+                log.debug(f"Could not update instance registry: {e}")
+
         def init_language_server_manager() -> None:
             # start the language server
             with LogTime("Language server initialization", logger=log):
@@ -684,6 +735,15 @@ class SerenaAgent:
         if not hasattr(self, "_is_initialized"):
             return
         log.info("SerenaAgent is shutting down ...")
+
+        # Unregister from instance registry
+        if hasattr(self, "_instance_registry") and self._instance_registry is not None:
+            try:
+                self._instance_registry.unregister(os.getpid())
+                self._instance_registry.clear_global_dashboard(os.getpid())
+            except Exception as e:
+                log.debug(f"Could not unregister from instance registry: {e}")
+
         if self._active_project is not None:
             self._active_project.shutdown(timeout=timeout)
             self._active_project = None

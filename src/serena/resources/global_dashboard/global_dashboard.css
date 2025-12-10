@@ -1,0 +1,430 @@
+/* Global Dashboard Specific Styles */
+
+.global-badge {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    letter-spacing: 1px;
+}
+
+/* Tab Bar */
+.tab-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 15px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    flex-wrap: nowrap;
+}
+
+.instance-tab {
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.instance-tab:hover {
+    filter: brightness(1.1);
+}
+
+.instance-tab.active {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* Tab States */
+.tab-live-with-project {
+    background: #d1fae5;
+    border-color: #059669;
+    color: #065f46;
+}
+
+.tab-live-no-project {
+    background: #fef3c7;
+    border-color: #d97706;
+    color: #92400e;
+}
+
+.tab-zombie {
+    background: #fee2e2;
+    border-color: #b91c1c;
+    color: #7f1d1d;
+}
+
+/* Dark mode tab colors */
+[data-theme="dark"] .tab-live-with-project {
+    background: #064e3b;
+    border-color: #10b981;
+    color: #a7f3d0;
+}
+
+[data-theme="dark"] .tab-live-no-project {
+    background: #78350f;
+    border-color: #f59e0b;
+    color: #fef3c7;
+}
+
+[data-theme="dark"] .tab-zombie {
+    background: #7f1d1d;
+    border-color: #ef4444;
+    color: #fecaca;
+}
+
+/* Tab status indicator */
+.tab-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tab-live-with-project .tab-status {
+    background: #059669;
+}
+
+.tab-live-no-project .tab-status {
+    background: #d97706;
+}
+
+.tab-zombie .tab-status {
+    background: #b91c1c;
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Instance Content Area */
+#instance-content {
+    padding: 20px;
+    min-height: 400px;
+}
+
+.instance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.instance-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.instance-meta {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.instance-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+/* Zombie Warning Banner */
+.zombie-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+[data-theme="dark"] .zombie-banner {
+    background: #450a0a;
+    border-color: #7f1d1d;
+}
+
+.zombie-banner-icon {
+    font-size: 24px;
+}
+
+.zombie-banner-text {
+    flex: 1;
+}
+
+.zombie-banner-title {
+    font-weight: 600;
+    color: #991b1b;
+    margin-bottom: 4px;
+}
+
+[data-theme="dark"] .zombie-banner-title {
+    color: #fca5a5;
+}
+
+.zombie-banner-message {
+    font-size: 13px;
+    color: #7f1d1d;
+}
+
+[data-theme="dark"] .zombie-banner-message {
+    color: #fecaca;
+}
+
+/* Lifecycle Events */
+.lifecycle-container {
+    padding: 20px;
+}
+
+.lifecycle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.lifecycle-events {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.lifecycle-event {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    gap: 15px;
+}
+
+.lifecycle-event:last-child {
+    border-bottom: none;
+}
+
+.event-time {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 140px;
+}
+
+.event-icon {
+    font-size: 16px;
+    width: 24px;
+    text-align: center;
+}
+
+.event-content {
+    flex: 1;
+}
+
+.event-type {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.event-details {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Event type colors */
+.event-started { color: #059669; }
+.event-stopped { color: #6b7280; }
+.event-project { color: #3b82f6; }
+.event-zombie { color: #dc2626; }
+.event-pruned { color: #f59e0b; }
+.event-killed { color: #7c3aed; }
+.event-restored { color: #10b981; }
+
+/* No instances message */
+.no-instances-message {
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+}
+
+/* Config section */
+.config-section {
+    margin-bottom: 20px;
+}
+
+.config-section h2, .config-section h3 {
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    font-size: 14px;
+}
+
+.config-label {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.config-value {
+    font-family: monospace;
+}
+
+/* Basic stats section */
+.basic-stats-section {
+    margin-bottom: 20px;
+}
+
+.basic-stats-section h2 {
+    margin-bottom: 15px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.stat-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.stat-tool-name {
+    min-width: 150px;
+    font-family: monospace;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.bar-wrapper {
+    flex: 1;
+    height: 16px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.stat-count {
+    min-width: 40px;
+    text-align: right;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.no-stats-message {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+}
+
+/* Projects section / tools grid */
+.projects-section {
+    margin-bottom: 20px;
+}
+
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.collapsible-header:hover {
+    background: var(--bg-hover);
+}
+
+.toggle-icon {
+    transition: transform 0.2s ease;
+}
+
+.toggle-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.tools-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+}
+
+.tool-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+/* Loading state */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+/* Error message */
+.error-message {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 20px;
+    color: #991b1b;
+    text-align: center;
+}
+
+[data-theme="dark"] .error-message {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fca5a5;
+}

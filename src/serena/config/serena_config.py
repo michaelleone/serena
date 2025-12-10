@@ -367,6 +367,12 @@ class SerenaConfig(ToolInclusionDefinition, ToStringMixin):
     trace_lsp_communication: bool = False
     web_dashboard: bool = True
     web_dashboard_open_on_launch: bool = True
+    web_dashboard_global: bool = False
+    """Whether to start the global dashboard that shows all running Serena instances."""
+    web_dashboard_global_open_on_launch: bool = False
+    """Whether to open the global dashboard in browser when Serena starts (if enabled)."""
+    web_dashboard_global_port: int | None = None
+    """Port for the global dashboard. If None, uses default (25282). Auto-increments if busy."""
     tool_timeout: float = DEFAULT_TOOL_TIMEOUT
     loaded_commented_yaml: CommentedMap | None = None
     config_file_path: str | None = None
@@ -488,6 +494,9 @@ class SerenaConfig(ToolInclusionDefinition, ToStringMixin):
         instance.log_level = loaded_commented_yaml.get("log_level", loaded_commented_yaml.get("gui_log_level", logging.INFO))
         instance.web_dashboard = loaded_commented_yaml.get("web_dashboard", True)
         instance.web_dashboard_open_on_launch = loaded_commented_yaml.get("web_dashboard_open_on_launch", True)
+        instance.web_dashboard_global = loaded_commented_yaml.get("web_dashboard_global", False)
+        instance.web_dashboard_global_open_on_launch = loaded_commented_yaml.get("web_dashboard_global_open_on_launch", False)
+        instance.web_dashboard_global_port = loaded_commented_yaml.get("web_dashboard_global_port", None)
         instance.tool_timeout = loaded_commented_yaml.get("tool_timeout", DEFAULT_TOOL_TIMEOUT)
         instance.trace_lsp_communication = loaded_commented_yaml.get("trace_lsp_communication", False)
         instance.excluded_tools = loaded_commented_yaml.get("excluded_tools", [])
