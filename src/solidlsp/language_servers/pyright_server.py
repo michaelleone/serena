@@ -6,6 +6,7 @@ import logging
 import os
 import pathlib
 import re
+import sys
 import threading
 from typing import cast
 
@@ -34,7 +35,7 @@ class PyrightServer(SolidLanguageServer):
         super().__init__(
             config,
             repository_root_path,
-            ProcessLaunchInfo(cmd="python -m pyright.langserver --stdio", cwd=repository_root_path),
+            ProcessLaunchInfo(cmd=f"{sys.executable} -m pyright.langserver --stdio", cwd=repository_root_path),
             "python",
             solidlsp_settings,
         )
