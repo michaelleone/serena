@@ -19,7 +19,11 @@ import requests
 from flask import Flask, Response, send_from_directory
 from pydantic import BaseModel
 
-from serena.constants import SERENA_GLOBAL_DASHBOARD_DIR, SERENA_GLOBAL_DASHBOARD_PORT_DEFAULT
+from serena.constants import (
+    SERENA_DASHBOARD_DIR,
+    SERENA_GLOBAL_DASHBOARD_DIR,
+    SERENA_GLOBAL_DASHBOARD_PORT_DEFAULT,
+)
 from serena.util.instance_registry import (
     ZOMBIE_TIMEOUT_SECONDS,
     InstanceRegistry,
@@ -98,6 +102,11 @@ class SerenaGlobalDashboardAPI:
         @app.route("/global-dashboard/")
         def serve_dashboard_index() -> Response:
             return send_from_directory(SERENA_GLOBAL_DASHBOARD_DIR, "index.html")
+
+        # Shared assets from regular dashboard (CSS, JS, icons, logo)
+        @app.route("/dashboard/<path:filename>")
+        def serve_shared_assets(filename: str) -> Response:
+            return send_from_directory(SERENA_DASHBOARD_DIR, filename)
 
         # API: Instance list for tab bar
         @app.route("/global-dashboard/api/instances", methods=["GET"])

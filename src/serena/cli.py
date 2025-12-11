@@ -128,8 +128,12 @@ class TopLevelCommands(AutoRegisteringGroup):
     @click.option("--port", type=int, default=8000, show_default=True)
     @click.option("--enable-web-dashboard", type=bool, is_flag=False, default=None, help="Override dashboard setting in config.")
     @click.option("--enable-gui-log-window", type=bool, is_flag=False, default=None, help="Override GUI log window setting in config.")
-    @click.option("--web-dashboard-global", type=bool, is_flag=False, default=None, help="Enable global dashboard aggregating all instances.")
-    @click.option("--web-dashboard-global-open-on-launch", type=bool, is_flag=False, default=None, help="Open global dashboard in browser on launch.")
+    @click.option(
+        "--web-dashboard-global", type=bool, is_flag=False, default=None, help="Enable global dashboard aggregating all instances."
+    )
+    @click.option(
+        "--web-dashboard-global-open-on-launch", type=bool, is_flag=False, default=None, help="Open global dashboard in browser on launch."
+    )
     @click.option("--web-dashboard-global-port", type=int, default=None, help="Port for global dashboard (default: 25282).")
     @click.option(
         "--log-level",
