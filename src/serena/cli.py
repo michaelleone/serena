@@ -22,6 +22,7 @@ from serena.constants import (
     DEFAULT_CONTEXT,
     DEFAULT_MODES,
     PROMPT_TEMPLATES_DIR_INTERNAL,
+    SERENA_CENTRAL_SERVER_PORT_DEFAULT,
     SERENA_LOG_FORMAT,
     SERENAS_OWN_CONTEXT_YAMLS_DIR,
     SERENAS_OWN_MODE_YAMLS_DIR,
@@ -232,6 +233,117 @@ class TopLevelCommands(AutoRegisteringGroup):
             print(instr)
         else:
             print(f"{prefix}\n{instr}\n{postfix}")
+
+    @staticmethod
+    @click.command("start-central-server", help="Starts the Serena centralized server with global dashboard.")
+    @click.option(
+        "--context", type=str, default=DEFAULT_CONTEXT, show_default=True, help="Built-in context name or path to custom context YAML."
+    )
+    @click.option(
+        "--mode",
+        "modes",
+        type=str,
+        multiple=True,
+        default=DEFAULT_MODES,
+        show_default=True,
+        help="Built-in mode names or paths to custom mode YAMLs.",
+    )
+    @click.option("--host", type=str, default="0.0.0.0", show_default=True, help="Host to bind the server to.")
+    @click.option("--port", type=int, default=SERENA_CENTRAL_SERVER_PORT_DEFAULT, show_default=True, help="Port to bind the server to.")
+    @click.option(
+        "--log-level",
+        type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+        default="INFO",
+        help="Log level for the server.",
+    )
+    def start_central_server(
+        context: str,
+        modes: tuple[str, ...],
+        host: str,
+        port: int,
+        log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    ) -> None:
+        """Start the centralized Serena server with multi-session support and global dashboard."""
+        from serena.central_server import CentralizedSerenaServer
+        from serena.global_dashboard import GlobalDashboardAPI
+
+        # Initialize logging
+        lvl = logging.getLevelNamesMapping()[log_level.upper()]
+        Logger.root.setLevel(lvl)
+        formatter = logging.Formatter(SERENA_LOG_FORMAT)
+        memory_log_handler = MemoryLogHandler()
+        Logger.root.addHandler(memory_log_handler)
+        stderr_handler = logging.StreamHandler(stream=sys.stderr)
+        stderr_handler.formatter = formatter
+        Logger.root.addHandler(stderr_handler)
+        log_path = SerenaPaths().get_next_log_file_path("central-server")
+        file_handler = logging.FileHandler(log_path, mode="w")
+        file_handler.formatter = formatter
+        Logger.root.addHandler(file_handler)
+
+        log.info("Starting Serena centralized server")
+        log.info("Storing logs in %s", log_path)
+
+        # Create the centralized server
+        serena_config = SerenaConfig.from_config_file()
+        serena_config.log_level = lvl
+        serena_config.web_dashboard = False  # We use global dashboard instead
+
+        server = CentralizedSerenaServer(
+            context=context,
+            modes=list(modes),
+            serena_config=serena_config,
+            memory_log_handler=memory_log_handler,
+        )
+
+        # Start the global dashboard
+        dashboard = GlobalDashboardAPI(server)
+        log.info(f"Starting Serena centralized server on {host}:{port}")
+        log.info(f"Global dashboard available at http://{host}:{port}/global-dashboard/")
+
+        try:
+            dashboard.run(host=host, port=port)
+        except KeyboardInterrupt:
+            log.info("Received interrupt, shutting down...")
+        finally:
+            server.shutdown()
+
+    @staticmethod
+    @click.command("start-mcp-proxy", help="Starts an MCP proxy to connect stdio clients to a centralized Serena server.")
+    @click.option("--server-url", type=str, required=True, help="URL of the centralized Serena server (e.g., http://localhost:8080).")
+    @click.option("--session-id", type=str, default=None, help="Existing session ID to reconnect to.")
+    @click.option("--client-name", type=str, default=None, help="Human-readable name for this client.")
+    @click.option(
+        "--log-level",
+        type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+        default="WARNING",
+        help="Log level for the proxy.",
+    )
+    def start_mcp_proxy(
+        server_url: str,
+        session_id: str | None,
+        client_name: str | None,
+        log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    ) -> None:
+        """Start an MCP proxy that bridges stdio clients to the centralized server."""
+        from serena.mcp_proxy import SerenaMCPProxy
+
+        # Initialize logging (to stderr only, stdout is for MCP protocol)
+        lvl = logging.getLevelNamesMapping()[log_level.upper()]
+        Logger.root.setLevel(lvl)
+        formatter = logging.Formatter(SERENA_LOG_FORMAT)
+        stderr_handler = logging.StreamHandler(stream=sys.stderr)
+        stderr_handler.formatter = formatter
+        Logger.root.addHandler(stderr_handler)
+
+        log.info(f"Starting MCP proxy to {server_url}")
+
+        proxy = SerenaMCPProxy(
+            server_url=server_url,
+            session_id=session_id,
+            client_name=client_name,
+        )
+        proxy.run()
 
 
 class ModeCommands(AutoRegisteringGroup):
@@ -898,6 +1010,8 @@ prompts = PromptCommands()
 # Expose toplevel commands for the same reason
 top_level = TopLevelCommands()
 start_mcp_server = top_level.start_mcp_server
+start_central_server = top_level.start_central_server
+start_mcp_proxy = top_level.start_mcp_proxy
 index_project = project.index_deprecated
 
 # needed for the help script to work - register all subcommands to the top-level group

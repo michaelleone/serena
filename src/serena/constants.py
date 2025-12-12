@@ -15,7 +15,11 @@ SERENAS_OWN_MODE_YAMLS_DIR = str(_serena_pkg_path / "resources" / "config" / "mo
 INTERNAL_MODE_YAMLS_DIR = str(_serena_pkg_path / "resources" / "config" / "internal_modes")
 """Internal modes, never overridden by user modes."""
 SERENA_DASHBOARD_DIR = str(_serena_pkg_path / "resources" / "dashboard")
+SERENA_GLOBAL_DASHBOARD_DIR = str(_serena_pkg_path / "resources" / "global_dashboard")
 SERENA_ICON_DIR = str(_serena_pkg_path / "resources" / "icons")
+
+# Default port for the centralized server
+SERENA_CENTRAL_SERVER_PORT_DEFAULT = 8080
 
 DEFAULT_SOURCE_FILE_ENCODING = "utf-8"
 """The default encoding assumed for project source files."""

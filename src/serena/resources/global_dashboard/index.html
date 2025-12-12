@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serena Global Dashboard</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="../dashboard/serena-icon-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../dashboard/serena-icon-32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="../dashboard/serena-icon-48.png">
+    <link rel="stylesheet" href="../dashboard/dashboard.css">
+    <link rel="stylesheet" href="global_dashboard.css">
+    <script src="../dashboard/jquery.min.js"></script>
+    <script src="global_dashboard.js"></script>
+</head>
+<body>
+<div id="frame">
+    <header class="header">
+        <div class="header-left">
+            <div class="logo-container">
+                <img id="serena-logo" src="../dashboard/serena-logo.svg" alt="Serena">
+            </div>
+            <span class="global-badge">CENTRAL SERVER</span>
+        </div>
+        <nav class="header-nav">
+            <button id="theme-toggle" class="theme-toggle">
+                <span id="theme-icon" style="height: 21px">&#127769;</span>
+                <span id="theme-text">Dark</span>
+            </button>
+            <button id="menu-toggle" class="menu-button">
+                <span>&#9776;</span>
+                <span>Menu</span>
+            </button>
+            <div id="menu-dropdown" class="menu-dropdown" style="display:none">
+                <a href="#" data-page="sessions" class="active">Sessions</a>
+                <a href="#" data-page="lifecycle">Lifecycle Log</a>
+                <a href="#" data-page="tools">Tools</a>
+                <a href="#" data-page="config">Configuration</a>
+            </div>
+        </nav>
+    </header>
+
+    <div class="main">
+        <!-- Server Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">Uptime:</span>
+                <span id="stat-uptime" class="stat-value">--</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Active Sessions:</span>
+                <span id="stat-sessions" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Tool Calls:</span>
+                <span id="stat-tools" class="stat-value">0</span>
+            </div>
+        </div>
+
+        <!-- Sessions Page -->
+        <div id="page-sessions" class="page-view">
+            <div class="page-header">
+                <h2>Connected Sessions</h2>
+                <button id="refresh-sessions" class="btn">Refresh</button>
+            </div>
+            <div class="tab-bar" id="session-tabs">
+                <div class="loading">Loading sessions...</div>
+            </div>
+            <div id="session-content">
+                <div class="no-sessions-message">
+                    Select a session tab above to view details
+                </div>
+            </div>
+        </div>
+
+        <!-- Lifecycle Log Page -->
+        <div id="page-lifecycle" class="page-view" style="display:none">
+            <div class="page-header">
+                <h2>Lifecycle Events</h2>
+                <button id="refresh-lifecycle" class="btn">Refresh</button>
+            </div>
+            <div id="lifecycle-events" class="lifecycle-events">
+                <div class="loading">Loading events...</div>
+            </div>
+        </div>
+
+        <!-- Tools Page -->
+        <div id="page-tools" class="page-view" style="display:none">
+            <div class="page-header">
+                <h2>Available Tools</h2>
+            </div>
+            <div id="tools-list" class="tools-list">
+                <div class="loading">Loading tools...</div>
+            </div>
+        </div>
+
+        <!-- Configuration Page -->
+        <div id="page-config" class="page-view" style="display:none">
+            <div class="page-header">
+                <h2>Server Configuration</h2>
+            </div>
+            <div class="config-sections">
+                <div class="config-section">
+                    <h3>Registered Projects</h3>
+                    <div id="projects-list" class="config-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+                <div class="config-section">
+                    <h3>Available Modes</h3>
+                    <div id="modes-list" class="config-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+                <div class="config-section">
+                    <h3>Available Contexts</h3>
+                    <div id="contexts-list" class="config-list">
+                        <div class="loading">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        const dashboard = new GlobalDashboard();
+    });
+</script>
+</body>
+</html>

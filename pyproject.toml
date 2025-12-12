@@ -46,6 +46,8 @@ explicit = true
 [project.scripts]
 serena = "serena.cli:top_level"
 serena-mcp-server = "serena.cli:start_mcp_server"
+serena-central-server = "serena.cli:start_central_server"
+serena-mcp-proxy = "serena.cli:start_mcp_proxy"
 index-project = "serena.cli:index_project"        # deprecated
 
 [project.license]
